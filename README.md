@@ -56,7 +56,7 @@ git clone https://github.com/ByungjooChoi/ElastiLint.git
 cd ElastiLint
 
 cp .env.example .env        # then edit .env and fill in your values
-python3 scripts/install.py
+python3 scripts/install.py  # on Windows: python scripts\install.py
 ```
 
 `.env` holds your two secrets and is **gitignored** — it is never committed:
@@ -66,13 +66,32 @@ KIBANA_URL=https://your-project.kb.us-west-2.aws.elastic.cloud
 KIBANA_API_KEY=your_encoded_api_key
 ```
 
+**Getting these values:**
+
+- `KIBANA_URL` — your project's Kibana endpoint. A trailing slash is fine; the
+  script strips it.
+- `KIBANA_API_KEY` — create an API key in Kibana under **Stack Management →
+  Security → API keys** (or your project's *Create API key* button). It needs
+  privileges to manage **Workflows** and **Agent Builder** tools/agents; use the
+  least privilege that works. Paste the **encoded** value — a single base64 string.
+
 The installer creates the three workflows, the `dsl-scratch` index, the two tools,
-and the ElastiLint agent. It is idempotent — re-running it upserts cleanly.
+and the ElastiLint agent. If the API key is missing or lacks privileges it **fails
+loudly** (non-zero exit) instead of printing "Done".
+
+Re-running is safe: the tools and agent are refreshed in place, and existing
+workflows are left untouched. To apply a change you made to a workflow's YAML, run
+`uninstall.py` first, then `install.py`.
 
 ### Use it
 
-Open Kibana → **Agents → ElastiLint**, then paste a query. Examples to try are in
-[`examples/sample-queries.md`](examples/sample-queries.md).
+In Kibana, open **Agents** (the Agent Builder chat — it's in the left navigation;
+depending on your version/deployment it may sit under a *Build* or *AI* group).
+Select **ElastiLint**, then paste an ES|QL or Query DSL query.
+
+To validate against a real index's mapping (not just structure), ask in plain
+language, e.g. *"Validate this Query DSL against the `my-app-logs` index: { … }"*.
+More examples are in [`examples/sample-queries.md`](examples/sample-queries.md).
 
 ### Uninstall
 

@@ -13,7 +13,7 @@ Elastic Serverless project via the Kibana Agent Builder and Workflows APIs.
 
 Usage:
     cp .env.example .env      # then edit .env and fill in your values
-    python3 scripts/install.py
+    python3 scripts/install.py      # on Windows: python scripts\\install.py
 """
 import json
 import os
@@ -66,6 +66,22 @@ def api(url, api_key, method, path, body=None):
             return e.code, text
 
 
+def fail(msg):
+    sys.exit("ERROR: " + msg)
+
+
+def ensure(status, body, what):
+    """Abort with a clear message if an API call did not succeed."""
+    if status in (401, 403):
+        fail(
+            "authentication/authorization failed while trying to %s (HTTP %s).\n"
+            "       Check KIBANA_API_KEY and that it has privileges to manage\n"
+            "       Workflows and Agent Builder tools/agents." % (what, status)
+        )
+    if not (200 <= status < 300):
+        fail("could not %s (HTTP %s): %s" % (what, status, body))
+
+
 def workflow_name(yaml_text):
     for line in yaml_text.splitlines():
         if line.startswith("name:"):
@@ -73,12 +89,30 @@ def workflow_name(yaml_text):
     return None
 
 
+def upsert(url, api_key, collection, obj):
+    """POST obj to /api/agent_builder/<collection>; if it already exists,
+    delete it and POST again. Authentication failures are not treated as
+    'already exists' -- they abort via ensure()."""
+    path = "/api/agent_builder/" + collection
+    status, resp = api(url, api_key, "POST", path, obj)
+    if not (200 <= status < 300) and status not in (401, 403):
+        api(url, api_key, "DELETE", path + "/" + obj["id"])
+        status, resp = api(url, api_key, "POST", path, obj)
+    return status, resp
+
+
 def install():
     url, api_key = load_config()
     print("Target Kibana: " + url + "\n")
 
+    # Verify connectivity and credentials up front, so a bad API key fails loudly
+    # instead of silently printing "Done".
+    status, listing = api(url, api_key, "GET", "/api/workflows")
+    ensure(status, listing, "reach the Kibana Workflows API")
+
     # 1) Workflows -- create only those not already present (matched by name).
-    _, listing = api(url, api_key, "GET", "/api/workflows")
+    #    (Existing workflows are left as-is; to apply edits to a workflow's YAML,
+    #    run uninstall.py first, then install.py.)
     existing = {w.get("name") for w in (listing.get("results") or [])}
     wf_dir = DEFS / "workflows"
     pending = []
@@ -90,40 +124,48 @@ def install():
         else:
             pending.append((name, text))
     if pending:
-        status, resp = api(
-            url, api_key, "POST", "/api/workflows",
-            {"workflows": [{"yaml": text} for _, text in pending]},
-        )
+        status, resp = api(url, api_key, "POST", "/api/workflows",
+                           {"workflows": [{"yaml": text} for _, text in pending]})
+        ensure(status, resp, "create workflows")
+        # Invalid workflows come back under 'created' with valid=false (not under
+        # 'failed'/'failures'), so check both places.
         for w in (resp.get("created") or []):
             print("  workflow created: %s (valid=%s)" % (w.get("id"), w.get("valid")))
-        for w in (resp.get("failed") or []):
-            print("  workflow FAILED: %s" % w)
+            if not w.get("valid"):
+                fail("workflow '%s' was rejected as invalid; check its YAML." % w.get("id"))
+        for w in (resp.get("failed") or resp.get("failures") or []):
+            fail("workflow could not be created: %s" % w)
 
     # 2) Create the dsl-scratch index by running the setup workflow server-side.
     setup_yaml = (wf_dir / "create-dsl-scratch.yaml").read_text(encoding="utf-8")
     status, resp = api(url, api_key, "POST", "/api/workflows/test",
                        {"inputs": {}, "workflowYaml": setup_yaml})
-    if status < 300:
-        print("  dsl-scratch index setup triggered (exec %s)" % resp.get("workflowExecutionId", "?"))
-    else:
-        print("  WARNING: dsl-scratch setup returned %s: %s" % (status, resp))
+    ensure(status, resp, "create the dsl-scratch index")
+    print("  dsl-scratch index setup triggered (exec %s)" % resp.get("workflowExecutionId", "?"))
 
-    # 3) Tools -- upsert (create; if it exists, delete then recreate).
+    # Resolve the real workflow ids before wiring tools. On a first install the
+    # workflow slug equals its name, but if the workflows were ever deleted and
+    # recreated, Elastic suffixes the slug (e.g. validate-esql-1). Looking the id
+    # up by name keeps the tool -> workflow wiring correct in every case.
+    status, listing2 = api(url, api_key, "GET", "/api/workflows")
+    ensure(status, listing2, "list workflows")
+    name_to_id = {w.get("name"): w.get("id") for w in (listing2.get("results") or [])}
+
+    # 3) Tools -- upsert, wiring each to the resolved workflow id.
     for f in sorted((DEFS / "tools").glob("*.json")):
         tool = json.loads(f.read_text(encoding="utf-8"))
-        status, resp = api(url, api_key, "POST", "/api/agent_builder/tools", tool)
-        if status >= 300:
-            api(url, api_key, "DELETE", "/api/agent_builder/tools/" + tool["id"])
-            status, resp = api(url, api_key, "POST", "/api/agent_builder/tools", tool)
-        print("  tool %s: HTTP %s" % (tool["id"], status))
+        wf_ref = tool.get("configuration", {}).get("workflow_id")
+        if wf_ref in name_to_id:
+            tool["configuration"]["workflow_id"] = name_to_id[wf_ref]
+        status, resp = upsert(url, api_key, "tools", tool)
+        ensure(status, resp, "create tool '%s'" % tool["id"])
+        print("  tool %s -> workflow %s: ok" % (tool["id"], tool["configuration"].get("workflow_id")))
 
     # 4) Agent -- upsert.
     agent = json.loads((DEFS / "agent" / "elastilint.json").read_text(encoding="utf-8"))
-    status, resp = api(url, api_key, "POST", "/api/agent_builder/agents", agent)
-    if status >= 300:
-        api(url, api_key, "DELETE", "/api/agent_builder/agents/" + agent["id"])
-        status, resp = api(url, api_key, "POST", "/api/agent_builder/agents", agent)
-    print("  agent %s: HTTP %s" % (agent["id"], status))
+    status, resp = upsert(url, api_key, "agents", agent)
+    ensure(status, resp, "create agent '%s'" % agent["id"])
+    print("  agent %s: ok" % agent["id"])
 
     print(
         "\nDone. Open Kibana -> Agents -> ElastiLint and paste an ES|QL or "
@@ -132,4 +174,7 @@ def install():
 
 
 if __name__ == "__main__":
-    install()
+    try:
+        install()
+    except urllib.error.URLError as e:
+        sys.exit("ERROR: could not reach KIBANA_URL (%s). Check the URL and your network." % e.reason)
