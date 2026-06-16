@@ -1,0 +1,13 @@
+{
+  "id": "validate-querydsl",
+  "type": "workflow",
+  "description": "Validate an Elasticsearch Query DSL query using the cluster's _validate/query API and return whether it is structurally valid. Use whenever the user provides a Query DSL query (JSON with bool/match/term/range/etc). Set `body` to a JSON string of the form {\"query\": <the user's query clause>}. Leave `index` at its default (dsl-scratch) to validate structure only (index-independent: unknown fields pass, only structural/syntax errors are caught); set `index` to an existing index name only if the user wants field/type checking. Report the returned valid value and, if false, the error. Do not decide validity yourself.",
+  "tags": [
+    "validation",
+    "query-linter",
+    "elastilint"
+  ],
+  "configuration": {
+    "workflow_id": "validate-querydsl"
+  }
+}

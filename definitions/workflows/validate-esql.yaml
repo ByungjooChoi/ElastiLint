@@ -1,0 +1,17 @@
+name: validate-esql
+enabled: true
+description: >-
+  Validate an Elasticsearch ES|QL query by submitting it to the _query API with LIMIT 0 appended so no data is returned. Pass esql as the raw ES|QL query string such as FROM my-index | WHERE foo == 1. If the query is valid the workflow completes; if it is invalid the step fails and the Elasticsearch error is returned (parsing_exception means a syntax error, verification_exception means an unknown index or column).
+triggers:
+  - type: manual
+    inputs:
+      - name: esql
+        type: string
+steps:
+  - name: validate
+    type: elasticsearch.request
+    with:
+      method: POST
+      path: "/_query"
+      body:
+        query: "{{ inputs.esql }} | LIMIT 0"

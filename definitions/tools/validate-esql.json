@@ -1,0 +1,13 @@
+{
+  "id": "validate-esql",
+  "type": "workflow",
+  "description": "Validate an Elasticsearch ES|QL query using the cluster's _query API (LIMIT 0, no data returned). Use whenever the user provides an ES|QL query (pipe syntax, e.g. FROM ... | WHERE ... | STATS ...). Set `esql` to the raw ES|QL string. If the tool result has status completed the query is VALID; if status failed the query is INVALID and the error_message holds the Elasticsearch error (parsing_exception = syntax error; verification_exception = unknown index or column). Report the tool result; do not decide validity yourself.",
+  "tags": [
+    "validation",
+    "query-linter",
+    "elastilint"
+  ],
+  "configuration": {
+    "workflow_id": "validate-esql"
+  }
+}

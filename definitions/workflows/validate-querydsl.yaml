@@ -1,0 +1,21 @@
+name: validate-querydsl
+enabled: true
+description: >-
+  Validate the structure of an Elasticsearch Query DSL query and report whether it is valid. Pass body as the JSON for the _validate/query request body (a JSON object containing a query field). By default it runs against an empty scratch index (dsl-scratch) so unknown field names are accepted and only structural or syntax problems are reported. Optionally pass index (an existing index name) to also validate field names and types against that index mapping.
+triggers:
+  - type: manual
+    inputs:
+      - name: body
+        type: string
+      - name: index
+        type: string
+        default: dsl-scratch
+steps:
+  - name: validate
+    type: elasticsearch.request
+    with:
+      method: POST
+      path: "/{{ inputs.index }}/_validate/query?explain=true&rewrite=true"
+      headers:
+        Content-Type: application/json
+      body: "{{ inputs.body }}"
