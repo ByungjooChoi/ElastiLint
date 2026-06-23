@@ -8,3 +8,6 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local planning docs (not published)
+CHANGE_PLAN_v2.md

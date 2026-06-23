@@ -41,11 +41,26 @@ Elasticsearch error, explains it, and suggests a corrected query.
 
 ## Prerequisites
 
-- An **Elastic Serverless** project (or Stack 9.x) with **Agent Builder** (GA) and
-  **Workflows** enabled.
+- **Elastic Serverless**, or a self-managed / ECH **Stack** release with **Agent Builder**
+  and **Workflows** enabled (built and tested against 8.19 and 9.4; see Compatibility below).
 - An **Elastic API key** with privileges to manage Agent Builder tools/agents and
   Workflows.
 - **Python 3.8+** (standard library only — no `pip install` needed).
+
+## Compatibility & supported versions
+
+Built and tested against **Elastic 8.19** and **9.4**, and expected to work on other releases that
+provide **Agent Builder**, **Workflows**, and (for semantic validation) the built-in **ELSER**
+endpoint (`.elser-2-elasticsearch`) — available on **Elastic Serverless** and recent self-managed /
+ECH **Stack** releases.
+
+Because ElastiLint delegates every verdict to the cluster — it runs your query against the cluster's
+own `_search` / `_query` APIs — it **automatically tracks whatever your cluster's version supports**.
+There is no version-specific validation logic to maintain: a construct that is valid on 9.4 but not
+on 8.19 is judged correctly by each cluster.
+
+Run a release that is still within Elastic's support window; versions past **End of Life (EOL)** are
+not supported. See [Elastic Product End of Life Dates](https://www.elastic.co/support/eol).
 
 ---
 
@@ -159,4 +174,4 @@ installer.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Apache-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).

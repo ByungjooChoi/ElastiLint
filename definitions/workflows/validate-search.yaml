@@ -1,0 +1,26 @@
+name: validate-search
+enabled: true
+description: >-
+  Validate a full Elasticsearch search body (Query DSL, retriever / rrf / text_similarity_reranker,
+  knn, aggs, semantic, and top-level keys) by submitting it to the _search API against a
+  zero-document scratch index. The cluster parses and rejects unsupported or malformed constructs;
+  the returned status / error is the validation result. Pass `body` as the JSON search body and
+  `index` as the scratch index (elastilint-schema-scratch when the body contains a semantic query,
+  otherwise dsl-scratch).
+triggers:
+  - type: manual
+    inputs:
+      - name: body
+        type: string
+      - name: index
+        type: string
+        default: dsl-scratch
+steps:
+  - name: validate
+    type: elasticsearch.request
+    with:
+      method: POST
+      path: "/{{ inputs.index }}/_search"
+      headers:
+        Content-Type: application/json
+      body: "{{ inputs.body }}"

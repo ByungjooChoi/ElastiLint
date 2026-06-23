@@ -1,0 +1,27 @@
+name: create-schema-scratch
+enabled: true
+description: >-
+  One-time setup. Creates the zero-document elastilint-schema-scratch index with an ELSER-backed
+  semantic_text field, used by validate-search to validate semantic queries and to catch a
+  semantic query aimed at a non-semantic_text field. Safe to re-run. Requires the built-in ELSER
+  inference endpoint (.elser-2-elasticsearch), present on Serverless and Stack 9.x+.
+triggers:
+  - type: manual
+steps:
+  - name: create
+    type: elasticsearch.request
+    with:
+      method: PUT
+      path: /elastilint-schema-scratch
+      body:
+        mappings:
+          properties:
+            title:
+              type: text
+            content:
+              type: text
+            semantic_content:
+              type: semantic_text
+              inference_id: ".elser-2-elasticsearch"
+    on-failure:
+      continue: true

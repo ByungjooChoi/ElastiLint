@@ -136,12 +136,14 @@ def install():
         for w in (resp.get("failed") or resp.get("failures") or []):
             fail("workflow could not be created: %s" % w)
 
-    # 2) Create the dsl-scratch index by running the setup workflow server-side.
-    setup_yaml = (wf_dir / "create-dsl-scratch.yaml").read_text(encoding="utf-8")
-    status, resp = api(url, api_key, "POST", "/api/workflows/test",
-                       {"inputs": {}, "workflowYaml": setup_yaml})
-    ensure(status, resp, "create the dsl-scratch index")
-    print("  dsl-scratch index setup triggered (exec %s)" % resp.get("workflowExecutionId", "?"))
+    # 2) Create the scratch indices by running each setup workflow server-side.
+    #    (create-dsl-scratch = empty/universal; create-schema-scratch = ELSER semantic_text.)
+    for setup_file in sorted(wf_dir.glob("create-*.yaml")):
+        setup_yaml = setup_file.read_text(encoding="utf-8")
+        status, resp = api(url, api_key, "POST", "/api/workflows/test",
+                           {"inputs": {}, "workflowYaml": setup_yaml})
+        ensure(status, resp, "run setup workflow '%s'" % setup_file.stem)
+        print("  setup %s triggered (exec %s)" % (setup_file.stem, resp.get("workflowExecutionId", "?")))
 
     # Resolve the real workflow ids before wiring tools. On a first install the
     # workflow slug equals its name, but if the workflows were ever deleted and

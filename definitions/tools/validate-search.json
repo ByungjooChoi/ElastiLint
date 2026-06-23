@@ -1,0 +1,13 @@
+{
+  "id": "validate-search",
+  "type": "workflow",
+  "description": "Validate a full Elasticsearch search body (Query DSL; retriever / rrf / text_similarity_reranker; knn; aggs; semantic; and any top-level keys) using the cluster's _search API against a zero-document scratch index. Use this for ANY Query DSL or search body. Set `body` to the JSON search body. Set `index` to `elastilint-schema-scratch` when the body contains a `semantic` query (it needs the semantic_text mapping); otherwise leave it as `dsl-scratch`. Interpreting the result: status `completed` => VALID. Status `failed` => read the error: a parse / structure error (parsing_exception, x_content_parse_exception, 'unknown field', 'no [query] registered for', 'Required [...]', 'does not support semantic queries') means INVALID; but an error about `[rank] requires [size]` or the reranker's inference / candidates means the SYNTAX is fine and it only failed because the scratch index is empty -> treat as structurally VALID. Report the cluster's result; do not decide validity yourself.",
+  "tags": [
+    "validation",
+    "query-linter",
+    "elastilint"
+  ],
+  "configuration": {
+    "workflow_id": "validate-search"
+  }
+}
