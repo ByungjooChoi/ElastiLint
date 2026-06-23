@@ -1,0 +1,16 @@
+name: create-write-scratch
+enabled: true
+description: >-
+  One-time setup. Creates the zero-document elastilint-write-scratch index, the redirect target for
+  write requests (e.g. _doc). validate-request rewrites an index-write path to this index so it can
+  validate write structure and method without touching real data. Safe to re-run.
+triggers:
+  - type: manual
+steps:
+  - name: create
+    type: elasticsearch.request
+    with:
+      method: PUT
+      path: /elastilint-write-scratch
+    on-failure:
+      continue: true

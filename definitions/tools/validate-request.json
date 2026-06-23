@@ -1,0 +1,13 @@
+{
+  "id": "validate-request",
+  "type": "workflow",
+  "description": "Validate a FULL Elasticsearch HTTP request - a snippet that starts with a method + path line (e.g. 'POST kb_all/_search' or 'PUT my-index/_doc/1'), optionally with header lines, plus a JSON body. Use this when the user pastes a whole request, not just a query body. You MUST classify the request and set the inputs SAFELY:\n- Read requests (path ends in _search / _count / _validate / _mapping / _explain / _field_caps, or GET/HEAD): set method, path, body exactly as written.\n- Index WRITE requests (_doc, _create, _update by id, or PUT /<index> to create an index): REWRITE the index in the path to 'elastilint-write-scratch' (e.g. PUT /my-index/_doc/1 -> PUT /elastilint-write-scratch/_doc/1) so real data is never touched.\n- _security/api_key: set \"expiration\": \"60s\" in the body before sending, so any created key self-expires; success means the role_descriptor / DLS structure is valid.\n- Destructive or heavy requests (_bulk, _update_by_query, _delete_by_query, _reindex, DELETE /<index>): do NOT send them - warn the user instead.\nInterpreting the result: status completed = method + path + body all accepted (VALID). status failed = read the error: 'Incorrect HTTP method' = wrong HTTP verb; 'no handler found' = bad path/endpoint; parsing_exception = malformed body. For _security/api_key, an HTTP 403 means your key lacks manage_api_key (cannot validate here), which is NOT a structural error. Report the cluster result; do not decide validity yourself.",
+  "tags": [
+    "validation",
+    "query-linter",
+    "elastilint"
+  ],
+  "configuration": {
+    "workflow_id": "validate-request"
+  }
+}

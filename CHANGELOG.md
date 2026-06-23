@@ -8,7 +8,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 - **`validate-search`** — validates a full search body (Query DSL, `retriever`/`rrf`/`text_similarity_reranker`, `knn`, `aggs`, `semantic`) via the `_search` API against a zero-doc scratch index. Catches retriever-envelope errors (e.g. `_index` inside `standard`), top-level cramming (unknown keys such as an `Authorization` key in the body), and any construct the cluster rejects.
 - **`elastilint-schema-scratch`** index — zero-document index with an ELSER-backed `semantic_text` field, so a `semantic` query against a non-`semantic_text` field is caught.
-- **`validate-request`** (planned, P1) — validates a full HTTP request (method + path + body): wrong method (`PUT` vs `POST`), bad endpoints. Index writes are redirected to a write-scratch index; `_security/api_key` requests are validated by creating a 60s-expiry key, then invalidating it.
+- **`validate-request`** — validates a full HTTP request (method + path + body): catches wrong method (`PUT` vs `POST` → "Incorrect HTTP method") and bad endpoints ("no handler found"). Index writes are redirected to the `elastilint-write-scratch` index so real data is untouched; `_security/api_key` requests are validated by setting a 60s expiration (a malformed role_descriptor / DLS is rejected); destructive/heavy requests are warned about, not executed.
 
 ### Changed
 - Query DSL validation moved from `_validate/query` to `_search` (`_validate/query` could not handle `semantic`, `retriever`, or top-level body keys).

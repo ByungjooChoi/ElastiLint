@@ -1,0 +1,27 @@
+name: validate-request
+enabled: true
+description: >-
+  Validate a full Elasticsearch HTTP request. Inputs: method (GET/POST/PUT/DELETE/HEAD), path
+  (e.g. /my-index/_search), and body (JSON, or empty). The request is executed against the cluster
+  and the response status / error is the validation result. The agent keeps this safe (see the
+  tool description): read requests run as-is; index writes are redirected to elastilint-write-scratch;
+  _security/api_key gets a short expiration; destructive or heavy requests are warned about, not sent.
+triggers:
+  - type: manual
+    inputs:
+      - name: method
+        type: string
+      - name: path
+        type: string
+      - name: body
+        type: string
+        default: ""
+steps:
+  - name: run
+    type: elasticsearch.request
+    with:
+      method: "{{ inputs.method }}"
+      path: "{{ inputs.path }}"
+      headers:
+        Content-Type: application/json
+      body: "{{ inputs.body }}"

@@ -21,10 +21,10 @@ ROOT = Path(__file__).resolve().parent.parent
 AGENT_ID = "elastilint"
 # Includes legacy v1 names (validate-querydsl, create-dsl-scratch) so uninstall also
 # cleans up clusters that were set up with an earlier version.
-TOOL_IDS = ["validate-esql", "validate-search", "validate-querydsl"]
+TOOL_IDS = ["validate-esql", "validate-search", "validate-request", "validate-querydsl"]
 WORKFLOW_NAMES = [
-    "validate-esql", "validate-search", "validate-querydsl",
-    "create-dsl-scratch", "create-schema-scratch",
+    "validate-esql", "validate-search", "validate-request", "validate-querydsl",
+    "create-dsl-scratch", "create-schema-scratch", "create-write-scratch",
 ]
 
 TEARDOWN_INDEX_YAML = """name: elastilint-teardown
@@ -44,6 +44,13 @@ steps:
     with:
       method: DELETE
       path: /elastilint-schema-scratch
+    on-failure:
+      continue: true
+  - name: drop_write_scratch
+    type: elasticsearch.request
+    with:
+      method: DELETE
+      path: /elastilint-write-scratch
     on-failure:
       continue: true
 """
